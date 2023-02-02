@@ -18,6 +18,8 @@ tempdir = fd.askdirectory(parent=root, initialdir=currdir, title='Please select 
 
 "search selected folder for sub-directories containing .csv files"
 import pandas as pd
+import statistics
+import math
 from pathlib import Path
 
 list_subfolders = [f.name for f in os.scandir(tempdir) if f.is_dir()]
@@ -46,3 +48,19 @@ for i in list_subfolders:
         tempactivity = df.iloc[activityrows,numcolsactivity]
         activity.append(tempactivity)
         
+"calculate row statistics for area and activity"
+average_areas = []
+std_areas = []
+for i in areas:
+    average_areas.append(sum(i)/len(i))
+    std_areas.append(statistics.stdev(i))
+    
+sem_areas = []
+for i in std_areas:
+    sem_areas.append(i/math.sqrt(len(std_areas)))
+ 
+average_activity = []
+std_activity = []
+for i in activity:
+    average_activity.append(i.sum(axis=1)/len(i.columns))
+    std_activity.append(i.std(axis=1))
