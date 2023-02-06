@@ -5,6 +5,14 @@ Created on Thu Feb  2 12:58:40 2023
 @author: uqahine4
 """
 
+"search selected folder for sub-directories containing .csv files"
+import pandas as pd
+import statistics
+import math
+from pathlib import Path
+import numpy as np
+from sklearn.cluster import KMeans
+
 "user set the parent folder directory for analysis"
 import tkinter
 import tkinter.filedialog as fd
@@ -16,18 +24,30 @@ root.withdraw()
 currdir = os.getcwd()
 tempdir = fd.askdirectory(parent=root, initialdir=currdir, title='Please select folder')
 
-"search selected folder for sub-directories containing .csv files"
-import pandas as pd
-import statistics
-import math
-from pathlib import Path
-import numpy as np
-from numpy import trapz
-from sklearn.cluster import KMeans
-import statistics
-
 list_subfolders = [f.name for f in os.scandir(tempdir) if f.is_dir()]
 file = 'Results.csv'
+
+def truncate_data(activity_data,index_range):
+    average = []
+    for idx in activity_data:
+        temp_trunc = []
+        for o in range(0,13):
+            tempmean = [] 
+            tempmean = np.nanmean(idx[0:100])
+            temp_trunc.append(tempmean)
+            idx.drop(rangedrop,inplace=True)
+            idx.reset_index(drop=True,inplace=True)
+        average.append(pd.Series(temp_trunc))
+    
+    return average
+def mean_AUC(activity_data):
+    mean_activity = np.nanmean(pd.concat(activity_data,axis=1),axis=1)
+    sem_activity = np.std(activity_data,axis=0)/math.sqrt(len(activity_data))
+                                                                                         
+    "AUC for the truncated data"
+    AUC_activity = np.trapz(pd.concat(activity_data,axis=1),axis=0)
+    
+    return mean_activity, sem_activity, AUC_activity
 
 "load and store area and activity data for each file"
 areas = []
@@ -57,9 +77,10 @@ for i in list_subfolders:
         
 "calculate area clusters and sort results based on centroid sizes"
 "define appendable variables"
-average_areas = []
-std_areas = []
-lowarea = []
+average_areas = [] 
+total_areas = [] 
+std_areas = [] 
+lowarea = [] 
 medarea = []
 higharea = []
 "perform k-means clustering on area"
@@ -72,6 +93,7 @@ centroids = kmeans.cluster_centers_
 centroids = sorted(centroids)
 for i in areas:
     average_areas.append(sum(i)/len(i))
+    total_areas.append(sum(i))
     std_areas.append(statistics.stdev(i))
     lowarea.append(i.loc[lambda x : (x < float(centroids[0]))])
     tempmed = i.loc[lambda x : (x > float(centroids[0]))]
@@ -96,20 +118,53 @@ for i in higharea:
 sem_areas = []
 for i in std_areas:
     sem_areas.append(i/math.sqrt(len(std_areas)))
-
+    
+"output areas for individual regions and calculate total"
+lowarea_totals = []
+medarea_totals = []
+higharea_totals = []
+for i in lowarea:
+    lowarea_totals.append(np.nanmean(i))
+for i in medarea:
+    medarea_totals.append(np.nanmean(i))
+for i in higharea:
+    higharea_totals.append(np.nanmean(i))
+  
 "analyse activity data"
 "define appendable variables"
-average_activity = []
-std_activity = []
-low_activity = []
+sum_activity = [] 
+sum_activity_rel = []
+low_activity = [] 
 med_activity = []
 high_activity = []
 "sort results by average, low, medium, and high"
 for i, idx in enumerate(activity):
-    average_activity.append(idx.sum(axis=1)/len(idx.columns))
-    std_activity.append(idx.std(axis=1))
-    low_activity.append(idx[lowindex[i]])
-    med_activity.append(idx[medindex[i]])
-    high_activity.append(idx[highindex[i]])
+    sum_activity.append(idx.sum(axis=1))
+    sum_activity_rel.append(idx.sum(axis=1)/total_areas[i])
+    low_activity.append(idx[lowindex[i]].sum(axis=1)/total_areas[i])
+    med_activity.append(idx[medindex[i]].sum(axis=1)/total_areas[i])
+    high_activity.append(idx[highindex[i]].sum(axis=1)/total_areas[i])
 
-"calculate relative activity for activity traces"    
+"mean activity"
+mean_sum_activity = np.nanmean(pd.concat(sum_activity,axis=1),axis=1)
+mean_sum_activity_rel = np.nanmean(pd.concat(sum_activity_rel,axis=1),axis=1)
+
+mean_low_activity_rel = np.nanmean(pd.concat(low_activity,axis=1),axis=1)
+mean_med_activity_rel = np.nanmean(pd.concat(med_activity,axis=1),axis=1)
+mean_high_activity_rel = np.nanmean(pd.concat(high_activity,axis=1),axis=1)
+
+"truncated figures for display and analysis"
+rangedrop = list(range(0,100,1))
+sum_activity_temp = sum_activity
+sum_activity_rel_temp = sum_activity_rel
+trunc_sum_activity = truncate_data(sum_activity_temp,rangedrop)
+trunc_sum_activity_rel = truncate_data(sum_activity_rel_temp,rangedrop)
+trunc_low_activity_rel = truncate_data(low_activity,rangedrop)
+trunc_med_activity_rel = truncate_data(med_activity,rangedrop)
+trunc_high_activity_rel = truncate_data(high_activity,rangedrop)
+"calculate mean and sem for activity and the AUC"
+mean_sum_activity_trunc, sem_sum_activity_trunc, AUC_sum_activity_trunc = mean_AUC(trunc_sum_activity)
+mean_sum_activity_rel_trunc, sem_sum_activity_rel_trunc, AUC_sum_activity_rel_trunc = mean_AUC(trunc_sum_activity_rel)
+mean_low_activity_trunc, sem_low_activity_trunc, AUC_low_activity_trunc = mean_AUC(trunc_low_activity_rel)
+mean_med_activity_trunc, sem_med_activity_trunc, AUC_med_activity_trunc = mean_AUC(trunc_med_activity_rel)
+mean_high_activity_trunc, sem_high_activity_trunc, AUC_high_activity_trunc = mean_AUC(trunc_high_activity_rel)
