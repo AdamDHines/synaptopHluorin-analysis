@@ -2,7 +2,8 @@
 """
 Created on Thu Feb  2 12:58:40 2023
 
-@author: uqahine4
+@author: Adam Hines, adam.hines@uq.edu.au
+Current affiliation: Queensland Brain Institute, UQ Australia
 """
 
 "search selected folder for sub-directories containing .csv files"
@@ -12,6 +13,7 @@ import math
 from pathlib import Path
 import numpy as np
 from sklearn.cluster import KMeans
+import scipy as scp
 
 "user set the parent folder directory for analysis"
 import tkinter
@@ -42,7 +44,7 @@ def truncate_data(activity_data,index_range):
     return average
 def mean_AUC(activity_data):
     mean_activity = np.nanmean(pd.concat(activity_data,axis=1),axis=1)
-    sem_activity = np.std(activity_data,axis=0)/math.sqrt(len(activity_data))
+    sem_activity = np.nanstd(activity_data,axis=0)/math.sqrt(len(activity_data))
                                                                                          
     "AUC for the truncated data"
     AUC_activity = np.trapz(pd.concat(activity_data,axis=1),axis=0)
@@ -135,15 +137,24 @@ for i in higharea:
 sum_activity = [] 
 sum_activity_rel = []
 low_activity = [] 
+low_activity_ab = []
+low_act = []
+med_activity_ab = []
+med_act = []
+high_activity_ab = []
 med_activity = []
+high_act = []
 high_activity = []
 "sort results by average, low, medium, and high"
 for i, idx in enumerate(activity):
     sum_activity.append(idx.sum(axis=1))
     sum_activity_rel.append(idx.sum(axis=1)/total_areas[i])
     low_activity.append(idx[lowindex[i]].sum(axis=1)/total_areas[i])
+    low_activity_ab.append(idx[lowindex[i]].sum(axis=1)/len(lowarea[i]))
     med_activity.append(idx[medindex[i]].sum(axis=1)/total_areas[i])
+    med_activity_ab.append(idx[medindex[i]].sum(axis=1)/len(medarea[i]))
     high_activity.append(idx[highindex[i]].sum(axis=1)/total_areas[i])
+    high_activity_ab.append(idx[highindex[i]].sum(axis=1)/len(higharea[i]))
 
 "mean activity"
 mean_sum_activity = np.nanmean(pd.concat(sum_activity,axis=1),axis=1)
@@ -160,11 +171,34 @@ sum_activity_rel_temp = sum_activity_rel
 trunc_sum_activity = truncate_data(sum_activity_temp,rangedrop)
 trunc_sum_activity_rel = truncate_data(sum_activity_rel_temp,rangedrop)
 trunc_low_activity_rel = truncate_data(low_activity,rangedrop)
+trunc_low_activity = truncate_data(low_activity_ab,rangedrop)
 trunc_med_activity_rel = truncate_data(med_activity,rangedrop)
+trunc_med_activity = truncate_data(med_activity_ab,rangedrop)
 trunc_high_activity_rel = truncate_data(high_activity,rangedrop)
+trunc_high_activity = truncate_data(high_activity_ab,rangedrop)
+
 "calculate mean and sem for activity and the AUC"
 mean_sum_activity_trunc, sem_sum_activity_trunc, AUC_sum_activity_trunc = mean_AUC(trunc_sum_activity)
 mean_sum_activity_rel_trunc, sem_sum_activity_rel_trunc, AUC_sum_activity_rel_trunc = mean_AUC(trunc_sum_activity_rel)
 mean_low_activity_trunc, sem_low_activity_trunc, AUC_low_activity_trunc = mean_AUC(trunc_low_activity_rel)
+mean_low_abactivity_trunc, sem_low_abactivity_trunc, AUC_low_abactivity_trunc = mean_AUC(trunc_low_activity)
 mean_med_activity_trunc, sem_med_activity_trunc, AUC_med_activity_trunc = mean_AUC(trunc_med_activity_rel)
+mean_med_abactivity_trunc, sem_med_abactivity_trunc, AUC_med_abactivity_trunc = mean_AUC(trunc_med_activity)
 mean_high_activity_trunc, sem_high_activity_trunc, AUC_high_activity_trunc = mean_AUC(trunc_high_activity_rel)
+mean_high_abactivity_trunc, sem_high_abactivity_trunc, AUC_high_abactivity_trunc = mean_AUC(trunc_high_activity)
+"calculate relative frequency of release areas"
+low_freq = [] 
+med_freq = [] 
+high_freq = []
+low_ab = []
+med_ab = []
+high_ab = []
+for i, idx in enumerate(areas):
+    low_freq.append(len(lowarea[i])/len(areas[i]))
+    med_freq.append(len(medarea[i])/len(areas[i]))
+    high_freq.append(len(higharea[i])/len(areas[i]))
+    
+for i, idx in enumerate(areas):
+    low_ab.append(len(lowarea[i]))
+    med_ab.append(len(medarea[i]))
+    high_ab.append(len(higharea[i]))
